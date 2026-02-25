@@ -177,26 +177,29 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
                 name_series[valid_mask].astype(str).str.strip(),
             )))
 
-        payment_series = (
-            df.loc[email_series.index, payment_col]
-            .astype(str)
-            .str.strip()
-        )
+       payment_series = df.loc[email_series.index, payment_col]
+payment_str = payment_series.astype(str).str.strip()
 
-        # ✅ 결제 여부 판단
-        paid_series = payment_series.str.contains("입금했어요", na=False)
+# ✅ 결제 여부
+paid_series = payment_str.str.contains("입금했어요", na=False)
 
-        # ✅ 결제 방법 분류
-        method_series = payment_series.apply(
-            lambda x: "계좌이체" if "입금했어요" in x else "현장결제"
-        )
+# ✅ 결제 방법 분류
+def classify_method(x):
+    if "입금했어요" in x:
+        return "계좌이체"
+    elif "직접" in x or "현금" in x:
+        return "현금"
+    else:
+        return "기타"
 
-        all_dfs.append(pd.DataFrame({
-            "user_hash": hash_series.values,
-            "event": event_name,
-            "paid": paid_series.values,
-            "method": method_series.values,
-        }))
+method_series = payment_str.apply(classify_method)
+
+all_dfs.append(pd.DataFrame({
+    "user_hash": hash_series.values,
+    "event": event_name,
+    "paid": paid_series.values,
+    "method": method_series.values,
+}))
 
     if not all_dfs:
         return pd.DataFrame()
