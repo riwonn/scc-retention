@@ -15,66 +15,40 @@ from analyzer import (
 )
 
 # ── 테마 ──────────────────────────────────────────────────────────────────────
-_DARK = {"bg": "#2A0D29", "bg2": "#4D1849", "text": "#F0D8EE", "accent": "#FCACF3"}
-_LIGHT = {"bg": "#FFFFFF", "bg2": "#F5EFF5", "text": "#2A0D29", "accent": "#6E003D"}
+_DARK  = {"bg": "#111111", "bg2": "#2A0D29", "text": "#F0D8EE", "accent": "#FCACF3"}
+_LIGHT = {"bg": "#FFFFFF", "bg2": "#F5EFF5", "text": "#1a1a1a", "accent": "#6E003D"}
 
 
 def _css(c: dict) -> str:
-    return f"""
-    .stApp, [data-testid="stAppViewContainer"] {{
-        background-color: {c['bg']} !important;
-    }}
-    section[data-testid="stSidebar"] > div:first-child {{
-        background-color: {c['bg2']} !important;
-    }}
-    [data-testid="stHeader"] {{
-        background-color: {c['bg']} !important;
-    }}
-    .stApp, p, span, label, h1, h2, h3, h4, li,
-    [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{
-        color: {c['text']} !important;
-    }}
-    [data-testid="metric-container"] {{
-        background-color: {c['bg2']} !important;
-        border-radius: 8px; padding: 1rem;
-    }}
-    .stTabs [data-baseweb="tab-list"] {{
-        background-color: {c['bg2']} !important;
-    }}
-    .stTabs [data-baseweb="tab"] {{
-        color: {c['text']} !important;
-    }}
-    .stTabs [aria-selected="true"] {{
-        background-color: {c['accent']}33 !important;
-        color: {c['accent']} !important;
-    }}
-    .stButton > button {{
-        background-color: {c['accent']} !important;
-        color: {c['bg']} !important;
-        border: none !important;
-    }}
-    [data-testid="stSidebarContent"] label,
-    [data-testid="stSidebarContent"] span,
-    [data-testid="stSidebarContent"] p {{
-        color: {c['text']} !important;
-    }}
-    """
+    return (
+        f".stApp,[data-testid='stAppViewContainer']{{background-color:{c['bg']} !important}}"
+        f"section[data-testid='stSidebar']>div:first-child{{background-color:{c['bg2']} !important}}"
+        f"[data-testid='stHeader']{{background-color:{c['bg']} !important}}"
+        f".stApp,p,span,label,h1,h2,h3,h4,li,"
+        f"[data-testid='stMetricLabel'],[data-testid='stMetricValue']{{color:{c['text']} !important}}"
+        f"[data-testid='metric-container']{{background-color:{c['bg2']} !important;border-radius:8px;padding:1rem}}"
+        f".stTabs [data-baseweb='tab-list']{{background-color:{c['bg2']} !important}}"
+        f".stTabs [data-baseweb='tab']{{color:{c['text']} !important}}"
+        f".stTabs [aria-selected='true']{{background-color:{c['accent']}33 !important;color:{c['accent']} !important}}"
+        f".stButton>button{{background-color:{c['accent']} !important;color:{c['bg']} !important;border:none !important}}"
+        f"[data-testid='stSidebarContent'] label,"
+        f"[data-testid='stSidebarContent'] span,"
+        f"[data-testid='stSidebarContent'] p{{color:{c['text']} !important}}"
+    )
 
 
 def apply_theme() -> None:
     mode = st.session_state.get("theme_mode", "system")
     if mode == "dark":
-        css = f"<style>{_css(_DARK)}</style>"
+        block = _css(_DARK)
     elif mode == "light":
-        css = f"<style>{_css(_LIGHT)}</style>"
-    else:  # system
-        dark_css = _css(_DARK).replace("\n", " ")
-        light_css = _css(_LIGHT).replace("\n", " ")
-        css = f"""<style>
-        @media (prefers-color-scheme: dark)  {{ {dark_css} }}
-        @media (prefers-color-scheme: light) {{ {light_css} }}
-        </style>"""
-    st.markdown(css, unsafe_allow_html=True)
+        block = _css(_LIGHT)
+    else:
+        block = (
+            f"@media(prefers-color-scheme:dark){{{_css(_DARK)}}}"
+            f"@media(prefers-color-scheme:light){{{_css(_LIGHT)}}}"
+        )
+    st.html(f"<style>{block}</style>")
 
 
 # ── 번역 사전 ──────────────────────────────────────────────────────────────────
