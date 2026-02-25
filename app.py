@@ -15,7 +15,7 @@ from analyzer import (
     payment_summary,
     payment_method_dist,
     unpaid_members,
-    PRICE_KRW,
+    # PRICE_KRW,
 )
 
 
@@ -529,7 +529,7 @@ with tab5:
         total_reg = int(pay_sum["등록자"].sum())
         total_paid = int(pay_sum["결제완료"].sum())
         overall_rate = round(total_paid / total_reg * 100, 1) if total_reg else 0
-        total_revenue = total_paid * PRICE_KRW
+        # total_revenue = total_paid * PRICE_KRW
 
         p1, p2, p3, p4 = st.columns(4)
         p1.metric(t("pay_total_registered"), f"{total_reg}{t('unit_person')}")
