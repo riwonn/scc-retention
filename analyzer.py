@@ -123,7 +123,7 @@ def payment_summary(pay_df: pd.DataFrame) -> pd.DataFrame:
             "결제완료": paid_count,
             "미결제": total - paid_count,
             "결제율(%)": rate,
-            "매출(KRW)": paid_count * PRICE_KRW,
+            # "매출(KRW)": paid_count * PRICE_KRW,
         })
     return pd.DataFrame(results)
 

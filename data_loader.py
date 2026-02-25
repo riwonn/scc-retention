@@ -78,7 +78,7 @@ def build_attendance_matrix(
     출석 매트릭스: rows=이름(또는 user_hash), cols=event_name, values=0/1
     행 데이터: user_id, event, registered, attended 컬럼
     """
-    rows = []
+    all_dfs = []
     name_map: dict[str, str] = {}  # user_hash -> 이름
 
     for event_name, df in events.items():
@@ -89,41 +89,40 @@ def build_attendance_matrix(
         name_col = find_column(df, NAME_KEYWORDS)
         has_checkin = CHECKEDIN_COL in df.columns
 
-        for _, row in df.iterrows():
-            raw_email = row.get(email_col)
-            if pd.isna(raw_email):
-                continue
-            email_str = str(raw_email).strip()
-            if not email_str:
-                continue
+        # Filter to rows with valid emails
+        email_series = df[email_col].dropna()
+        email_series = email_series[email_series.astype(str).str.strip() != ""]
+        if email_series.empty:
+            continue
 
-            user_hash = anonymize_email(email_str)
+        hash_series = email_series.astype(str).str.strip().apply(anonymize_email)
 
-            # 이름 수집 (있을 경우)
-            if name_col:
-                raw_name = row.get(name_col)
-                if not pd.isna(raw_name) and str(raw_name).strip():
-                    name_map[user_hash] = str(raw_name).strip()
+        # 이름 수집 (있을 경우)
+        if name_col:
+            name_series = df.loc[email_series.index, name_col]
+            valid_mask = name_series.notna() & (name_series.astype(str).str.strip() != "")
+            name_map.update(dict(zip(
+                hash_series[valid_mask],
+                name_series[valid_mask].astype(str).str.strip(),
+            )))
 
-            # 실제 참석 여부
-            if has_checkin:
-                attended = not pd.isna(row.get(CHECKEDIN_COL))
-            else:
-                attended = True
+        # 실제 참석 여부
+        if has_checkin:
+            attended_series = df.loc[email_series.index, CHECKEDIN_COL].notna()
+        else:
+            attended_series = pd.Series(True, index=email_series.index)
 
-            rows.append(
-                {
-                    "user_hash": user_hash,
-                    "event": event_name,
-                    "registered": True,
-                    "attended": attended,
-                }
-            )
+        all_dfs.append(pd.DataFrame({
+            "user_hash": hash_series.values,
+            "event": event_name,
+            "registered": True,
+            "attended": attended_series.values,
+        }))
 
-    if not rows:
+    if not all_dfs:
         return pd.DataFrame(), pd.DataFrame()
 
-    detail_df = pd.DataFrame(rows)
+    detail_df = pd.concat(all_dfs, ignore_index=True)
 
     # 출석 매트릭스 (실제 참석자만)
     attended_df = detail_df[detail_df["attended"]]
@@ -150,7 +149,7 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
     결제 컬럼이 있는 시트에서 결제 데이터를 추출합니다.
     반환: user_hash, name, event, paid, method 컬럼의 DataFrame
     """
-    rows = []
+    all_dfs = []
     name_map: dict[str, str] = {}
 
     for event_name, df in events.items():
@@ -162,35 +161,36 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
             continue
         name_col = find_column(df, NAME_KEYWORDS)
 
-        for _, row in df.iterrows():
-            raw_email = row.get(email_col)
-            if pd.isna(raw_email):
-                continue
-            email_str = str(raw_email).strip()
-            if not email_str:
-                continue
+        # Filter to rows with valid emails
+        email_series = df[email_col].dropna()
+        email_series = email_series[email_series.astype(str).str.strip() != ""]
+        if email_series.empty:
+            continue
 
-            user_hash = anonymize_email(email_str)
+        hash_series = email_series.astype(str).str.strip().apply(anonymize_email)
 
-            if name_col:
-                raw_name = row.get(name_col)
-                if not pd.isna(raw_name) and str(raw_name).strip():
-                    name_map[user_hash] = str(raw_name).strip()
+        if name_col:
+            name_series = df.loc[email_series.index, name_col]
+            valid_mask = name_series.notna() & (name_series.astype(str).str.strip() != "")
+            name_map.update(dict(zip(
+                hash_series[valid_mask],
+                name_series[valid_mask].astype(str).str.strip(),
+            )))
 
-            raw_payment = row.get(payment_col)
-            paid = not pd.isna(raw_payment) and str(raw_payment).strip() != ""
-            method = str(raw_payment).strip() if paid else None
+        payment_series = df.loc[email_series.index, payment_col]
+        paid_series = payment_series.notna() & (payment_series.astype(str).str.strip() != "")
+        method_series = payment_series.astype(str).str.strip().where(paid_series)
 
-            rows.append({
-                "user_hash": user_hash,
-                "event": event_name,
-                "paid": paid,
-                "method": method,
-            })
+        all_dfs.append(pd.DataFrame({
+            "user_hash": hash_series.values,
+            "event": event_name,
+            "paid": paid_series.values,
+            "method": method_series.values,
+        }))
 
-    if not rows:
+    if not all_dfs:
         return pd.DataFrame()
 
-    pay_df = pd.DataFrame(rows)
+    pay_df = pd.concat(all_dfs, ignore_index=True)
     pay_df["name"] = pay_df["user_hash"].map(lambda h: name_map.get(h, h))
     return pay_df

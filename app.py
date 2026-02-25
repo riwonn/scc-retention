@@ -134,7 +134,7 @@ TRANSLATIONS = {
         "pay_total_registered": "총 등록자",
         "pay_total_paid": "결제 완료",
         "pay_rate": "전체 결제율",
-        "pay_revenue": "총 매출",
+        # "pay_revenue": "총 매출",
         "pay_bar_title": "이벤트별 결제 현황",
         "pay_bar_y": "인원",
         "pay_rate_title": "이벤트별 결제율 (%)",
@@ -144,7 +144,7 @@ TRANSLATIONS = {
         "col_paid": "결제완료",
         "col_unpaid": "미결제",
         "col_pay_rate": "결제율(%)",
-        "col_revenue": "매출(KRW)",
+        # "col_revenue": "매출(KRW)",
         "col_method": "결제 방법",
         "col_count": "인원",
     },
@@ -545,7 +545,7 @@ with tab5:
             "결제완료": t("col_paid"),
             "미결제": t("col_unpaid"),
             "결제율(%)": t("col_pay_rate"),
-            "매출(KRW)": t("col_revenue"),
+            # "매출(KRW)": t("col_revenue"),
             "등록자": t("col_registered"),
         }
         display_pay = pay_sum.rename(columns=col_map_pay)
