@@ -17,8 +17,8 @@ from analyzer import (
 # ── 번역 사전 ──────────────────────────────────────────────────────────────────
 TRANSLATIONS = {
     "ko": {
-        "page_title": "모임 리텐션 분석",
-        "app_title": "♟️ 모임 리텐션 대시보드",
+        "page_title": "서울체스클럽 리텐션 분석",
+        "app_title": "♟️ 서울체스클럽 리텐션 대시보드",
         "enter_password": "비밀번호를 입력하세요",
         "password": "비밀번호",
         "login": "로그인",
@@ -73,8 +73,8 @@ TRANSLATIONS = {
         "col_name": "이름",
     },
     "en": {
-        "page_title": "Club Retention Analysis",
-        "app_title": "♟️ Club Retention Dashboard",
+        "page_title": "Seoul Chess Club Retention Analysis",
+        "app_title": "♟️ Seoul Chess Club Retention Dashboard",
         "enter_password": "Enter your password",
         "password": "Password",
         "login": "Login",
