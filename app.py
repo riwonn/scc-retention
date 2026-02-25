@@ -270,21 +270,22 @@ if matrix.empty:
     st.stop()
 
 
-# ── 사이드바: 언어 선택 + 이벤트 필터 ────────────────────────────────────────
+# ── 사이드바: 설정 + 이벤트 필터 ─────────────────────────────────────────────
 all_events = list(matrix.columns)
 with st.sidebar:
-    lang_choice = st.radio(t("language"), ["한국어", "English"], horizontal=True)
-    st.session_state.lang = "ko" if lang_choice == "한국어" else "en"
+    with st.expander("⚙️ Settings", expanded=False):
+        lang_choice = st.radio(t("language"), ["한국어", "English"], horizontal=True)
+        st.session_state.lang = "ko" if lang_choice == "한국어" else "en"
 
-    theme_opts = [t("theme_system"), t("theme_light"), t("theme_dark")]
-    theme_choice = st.radio(t("theme"), theme_opts, horizontal=True)
-    if t("theme_dark") in theme_choice:
-        st.session_state.theme_mode = "dark"
-    elif t("theme_light") in theme_choice:
-        st.session_state.theme_mode = "light"
-    else:
-        st.session_state.theme_mode = "system"
-    apply_theme()
+        theme_opts = [t("theme_system"), t("theme_light"), t("theme_dark")]
+        theme_choice = st.radio(t("theme"), theme_opts, horizontal=True)
+        if t("theme_dark") in theme_choice:
+            st.session_state.theme_mode = "dark"
+        elif t("theme_light") in theme_choice:
+            st.session_state.theme_mode = "light"
+        else:
+            st.session_state.theme_mode = "system"
+        apply_theme()
 
     st.header(t("filter"))
     selected_events = st.multiselect(
