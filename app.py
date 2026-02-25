@@ -227,9 +227,7 @@ with tab3:
         st.plotly_chart(fig_hm, use_container_width=True)
 
         st.dataframe(
-            cohort_df.style.background_gradient(
-                cmap="Greens", subset=numeric_cols, vmin=0, vmax=100
-            ).format("{:.1f}%", subset=numeric_cols, na_rep="-"),
+            cohort_df.style.format("{:.1f}%", subset=numeric_cols, na_rep="-"),
             use_container_width=True,
         )
 
