@@ -14,7 +14,7 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 # 컬럼 탐색에 사용할 키워드
 EMAIL_KEYWORDS   = ["email", "이메일"]
 NAME_KEYWORDS    = ["이름", "name"]
-PAYMENT_KEYWORDS = ["결제 방법", "결제방법", "payment method"]
+PAYMENT_KEYWORDS = ["계좌이체", "참가비", "결제 방법", "결제방법", "payment method"]
 CHECKEDIN_COL    = "CheckedInAt"
 COUNT_COL        = "CheckinCount"
 
@@ -30,11 +30,15 @@ def get_gspread_client():
 
 
 def find_column(df: pd.DataFrame, keywords: list[str]) -> str | None:
-    """키워드 중 하나가 포함된 컬럼명을 반환합니다 (대소문자 무시)."""
+    """키워드를 가장 많이 포함한 컬럼명을 반환합니다 (대소문자 무시).
+    동수일 경우 먼저 나오는 컬럼 우선."""
+    best_col, best_score = None, 0
     for col in df.columns:
-        if any(kw.lower() in col.lower() for kw in keywords):
-            return col
-    return None
+        col_lower = col.lower()
+        score = sum(1 for kw in keywords if kw.lower() in col_lower)
+        if score > best_score:
+            best_col, best_score = col, score
+    return best_col if best_score > 0 else None
 
 
 def anonymize_email(email: str) -> str:
