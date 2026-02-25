@@ -30,7 +30,7 @@ def _css(c: dict) -> str:
         f".stTabs [data-baseweb='tab-list']{{background-color:{c['bg2']} !important}}"
         f".stTabs [data-baseweb='tab']{{color:{c['text']} !important}}"
         f".stTabs [aria-selected='true']{{background-color:{c['accent']}33 !important;color:{c['accent']} !important}}"
-        f".stButton>button{{background-color:{c['accent']} !important;color:{c['bg']} !important;border:none !important}}"
+        f".stButton>button{{background-color:#FCACF3 !important;color:#2A0D29 !important;border:none !important}}"
         f"[data-testid='stSidebarContent'] label,"
         f"[data-testid='stSidebarContent'] span,"
         f"[data-testid='stSidebarContent'] p{{color:{c['text']} !important}}"
