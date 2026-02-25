@@ -171,35 +171,46 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
         if name_col:
             name_series = df.loc[email_series.index, name_col]
-            valid_mask = name_series.notna() & (name_series.astype(str).str.strip() != "")
-            name_map.update(dict(zip(
-                hash_series[valid_mask],
-                name_series[valid_mask].astype(str).str.strip(),
-            )))
+            valid_mask = name_series.notna() & (
+                name_series.astype(str).str.strip() != ""
+            )
+            name_map.update(
+                dict(
+                    zip(
+                        hash_series[valid_mask],
+                        name_series[valid_mask].astype(str).str.strip(),
+                    )
+                )
+            )
 
-       payment_series = df.loc[email_series.index, payment_col]
-payment_str = payment_series.astype(str).str.strip()
+        # 🔥 반드시 for문 안에 있어야 함
+        payment_series = df.loc[email_series.index, payment_col]
+        payment_str = payment_series.astype(str).str.strip()
 
-# ✅ 결제 여부
-paid_series = payment_str.str.contains("입금했어요", na=False)
+        # 결제 여부
+        paid_series = payment_str.str.contains("입금했어요", na=False)
 
-# ✅ 결제 방법 분류
-def classify_method(x):
-    if "입금했어요" in x:
-        return "계좌이체"
-    elif "직접" in x or "현금" in x:
-        return "현금"
-    else:
-        return "기타"
+        # 결제 방법 분류
+        method_series = payment_str.apply(
+            lambda x: (
+                "계좌이체"
+                if "입금했어요" in x
+                else "현금"
+                if ("직접" in x or "현금" in x)
+                else "기타"
+            )
+        )
 
-method_series = payment_str.apply(classify_method)
-
-all_dfs.append(pd.DataFrame({
-    "user_hash": hash_series.values,
-    "event": event_name,
-    "paid": paid_series.values,
-    "method": method_series.values,
-}))
+        all_dfs.append(
+            pd.DataFrame(
+                {
+                    "user_hash": hash_series.values,
+                    "event": event_name,
+                    "paid": paid_series.values,
+                    "method": method_series.values,
+                }
+            )
+        )
 
     if not all_dfs:
         return pd.DataFrame()
