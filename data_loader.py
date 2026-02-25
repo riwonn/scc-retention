@@ -143,7 +143,6 @@ def build_attendance_matrix(
 
     return matrix, detail_df
 
-
 def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """
     결제 컬럼이 있는 시트에서 결제 데이터를 추출합니다.
@@ -156,12 +155,13 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
         email_col = find_column(df, EMAIL_KEYWORDS)
         if email_col is None:
             continue
+
         payment_col = find_column(df, PAYMENT_KEYWORDS)
         if payment_col is None:
             continue
+
         name_col = find_column(df, NAME_KEYWORDS)
 
-        # Filter to rows with valid emails
         email_series = df[email_col].dropna()
         email_series = email_series[email_series.astype(str).str.strip() != ""]
         if email_series.empty:
@@ -177,9 +177,19 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
                 name_series[valid_mask].astype(str).str.strip(),
             )))
 
-        payment_series = df.loc[email_series.index, payment_col]
-        paid_series = payment_series.notna() & (payment_series.astype(str).str.strip() != "")
-        method_series = payment_series.astype(str).str.strip().where(paid_series)
+        payment_series = (
+            df.loc[email_series.index, payment_col]
+            .astype(str)
+            .str.strip()
+        )
+
+        # ✅ 결제 여부 판단
+        paid_series = payment_series.str.contains("입금했어요", na=False)
+
+        # ✅ 결제 방법 분류
+        method_series = payment_series.apply(
+            lambda x: "계좌이체" if "입금했어요" in x else "현장결제"
+        )
 
         all_dfs.append(pd.DataFrame({
             "user_hash": hash_series.values,
