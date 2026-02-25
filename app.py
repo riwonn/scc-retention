@@ -329,9 +329,31 @@ if not selected_events:
 filtered_matrix = matrix[selected_events]
 filtered_detail = detail_df[detail_df["event"].isin(selected_events)] if not detail_df.empty else detail_df
 
-pay_df = build_payment_data(events)
-filtered_pay = pay_df[pay_df["event"].isin(selected_events)] if not pay_df.empty else pay_df
+def build_payment_data(events):
+    all_rows = []
 
+    for event_name, df in events.items():
+
+        # 실제 결제 컬럼 이름
+        payment_col = [c for c in df.columns if "결제 방법" in c][0]
+
+        tmp = df.copy()
+        tmp["event"] = event_name
+
+        # 문자열 정리
+        tmp[payment_col] = tmp[payment_col].astype(str).str.strip()
+
+        # paid 판별
+        tmp["paid"] = tmp[payment_col].str.contains("입금했어요")
+
+        # method 분류
+        tmp["method"] = tmp[payment_col].apply(
+            lambda x: "계좌이체" if "입금했어요" in x else "현장결제"
+        )
+
+        all_rows.append(tmp[["event", "paid", "method", "name"]])
+
+    return pd.concat(all_rows, ignore_index=True)
 
 # ── 상단 KPI ─────────────────────────────────────────────────────────────────
 total_unique = filtered_matrix.index.nunique()
