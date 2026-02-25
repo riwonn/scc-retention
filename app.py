@@ -22,13 +22,23 @@ from analyzer import (
 # ── 테마 ──────────────────────────────────────────────────────────────────────
 _DARK  = {"bg": "#111111", "bg2": "#2A0D29", "text": "#F0D8EE", "accent": "#FCACF3"}
 _LIGHT = {"bg": "#F7F0F6", "bg2": "#EAD8E9", "text": "#1A0A19", "accent": "#6E003D"}
+_BTN_BG, _BTN_FG = "#FCACF3", "#2A0D29"
 
 
-def _css(c: dict) -> str:
-    btn_bg = "#FCACF3"
-    btn_fg = "#2A0D29"
+def _css_light(c: dict) -> str:
+    # base="light"이므로 컴포넌트는 네이티브가 처리 — 배경색·버튼만 오버라이드
     return (
         f".stApp,[data-testid='stAppViewContainer']{{background-color:{c['bg']} !important}}"
+        f"section[data-testid='stSidebar']>div:first-child{{background-color:{c['bg2']} !important}}"
+        f"[data-testid='stHeader']{{background-color:{c['bg']} !important}}"
+        f".stButton>button{{background-color:{_BTN_BG} !important;color:{_BTN_FG} !important;border:none !important}}"
+    )
+
+
+def _css_dark(c: dict) -> str:
+    # base="light"이므로 다크 모드에서는 컴포넌트까지 전부 오버라이드
+    return (
+        f".stApp,[data-testid='stAppViewContainer'],.main .block-container{{background-color:{c['bg']} !important}}"
         f"section[data-testid='stSidebar']>div:first-child{{background-color:{c['bg2']} !important}}"
         f"[data-testid='stHeader']{{background-color:{c['bg']} !important}}"
         f"p,span,label,h1,h2,h3,h4,li,"
@@ -37,23 +47,23 @@ def _css(c: dict) -> str:
         f".stTabs [data-baseweb='tab-list']{{background-color:{c['bg2']} !important}}"
         f".stTabs [data-baseweb='tab']{{color:{c['text']} !important}}"
         f".stTabs [aria-selected='true']{{background-color:{c['accent']}33 !important;color:{c['accent']} !important}}"
-        f".stButton>button{{background-color:{btn_bg} !important;color:{btn_fg} !important;border:none !important}}"
-        f"[data-testid='stSidebarContent'] label,"
-        f"[data-testid='stSidebarContent'] span,"
-        f"[data-testid='stSidebarContent'] p{{color:{c['text']} !important}}"
+        f".stButton>button{{background-color:{_BTN_BG} !important;color:{_BTN_FG} !important;border:none !important}}"
+        f"[data-testid='stSidebarContent'] label,[data-testid='stSidebarContent'] span,[data-testid='stSidebarContent'] p{{color:{c['text']} !important}}"
+        f"[data-baseweb='radio'],[data-baseweb='select']>div,[data-baseweb='base-input']{{background-color:{c['bg2']} !important;color:{c['text']} !important}}"
+        f"[data-testid='stExpander']{{background-color:{c['bg2']} !important}}"
     )
 
 
 def apply_theme() -> None:
     mode = st.session_state.get("theme_mode", "system")
     if mode == "dark":
-        block = _css(_DARK)
+        block = _css_dark(_DARK)
     elif mode == "light":
-        block = _css(_LIGHT)
+        block = _css_light(_LIGHT)
     else:
         block = (
-            f"@media(prefers-color-scheme:dark){{{_css(_DARK)}}}"
-            f"@media(prefers-color-scheme:light){{{_css(_LIGHT)}}}"
+            f"@media(prefers-color-scheme:dark){{{_css_dark(_DARK)}}}"
+            f"@media(prefers-color-scheme:light){{{_css_light(_LIGHT)}}}"
         )
     st.html(f"<style>{block}</style>")
 
