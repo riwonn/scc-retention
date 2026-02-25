@@ -107,7 +107,7 @@ def frequency_distribution(matrix: pd.DataFrame) -> pd.DataFrame:
     return dist
 
 
-PRICE_KRW = 20_000
+# PRICE_KRW = 20_000
 
 
 def payment_summary(pay_df: pd.DataFrame) -> pd.DataFrame:
