@@ -68,18 +68,20 @@ def build_attendance_matrix(
     events: dict[str, pd.DataFrame]
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    출석 매트릭스와 원본 행 데이터(익명화)를 반환합니다.
+    출석 매트릭스와 원본 행 데이터를 반환합니다.
 
-    출석 매트릭스: rows=user_hash, cols=event_name, values=0/1
-    행 데이터: user_hash, event, registered, attended 컬럼
+    출석 매트릭스: rows=이름(또는 user_hash), cols=event_name, values=0/1
+    행 데이터: user_id, event, registered, attended 컬럼
     """
     rows = []
+    name_map: dict[str, str] = {}  # user_hash -> 이름
 
     for event_name, df in events.items():
         email_col = find_column(df, EMAIL_KEYWORDS)
         if email_col is None:
             continue
 
+        name_col = find_column(df, NAME_KEYWORDS)
         has_checkin = CHECKEDIN_COL in df.columns
 
         for _, row in df.iterrows():
@@ -92,11 +94,17 @@ def build_attendance_matrix(
 
             user_hash = anonymize_email(email_str)
 
-            # 실제 참석 여부: CheckedInAt 컬럼이 있으면 그 값으로, 없으면 등록만으로 판단
+            # 이름 수집 (있을 경우)
+            if name_col:
+                raw_name = row.get(name_col)
+                if not pd.isna(raw_name) and str(raw_name).strip():
+                    name_map[user_hash] = str(raw_name).strip()
+
+            # 실제 참석 여부
             if has_checkin:
                 attended = not pd.isna(row.get(CHECKEDIN_COL))
             else:
-                attended = True  # 체크인 정보 없으면 등록 = 참석으로 간주
+                attended = True
 
             rows.append(
                 {
@@ -124,5 +132,9 @@ def build_attendance_matrix(
         aggfunc="max",
         fill_value=0,
     ).astype(int)
+
+    # 이름이 있으면 인덱스를 이름으로 교체
+    matrix.index = matrix.index.map(lambda h: name_map.get(h, h))
+    detail_df["user_hash"] = detail_df["user_hash"].map(lambda h: name_map.get(h, h))
 
     return matrix, detail_df

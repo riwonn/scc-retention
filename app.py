@@ -237,7 +237,7 @@ with tab4:
     freq_df = attendance_frequency(filtered_matrix)
     freq_df.index.name = "순위"
 
-    st.caption("개인정보 보호를 위해 이메일은 익명 ID로 표시됩니다.")
+    st.caption("이름 컬럼이 없는 경우 익명 ID(#해시)로 표시됩니다.")
 
     # 상위 참석자 막대 차트
     top_n = min(20, len(freq_df))
@@ -249,7 +249,7 @@ with tab4:
         title=f"참석 횟수 상위 {top_n}명",
         color="참석 횟수",
         color_continuous_scale="Purples",
-        labels={"user_id": "멤버 ID"},
+        labels={"user_id": "이름"},
     )
     fig_top.update_layout(
         yaxis=dict(autorange="reversed"),
