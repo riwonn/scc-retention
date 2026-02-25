@@ -328,6 +328,11 @@ if not selected_events:
 
 filtered_matrix = matrix[selected_events]
 filtered_detail = detail_df[detail_df["event"].isin(selected_events)] if not detail_df.empty else detail_df
+# 결제 데이터 생성
+pay_df = build_payment_data(events)
+
+# 선택된 이벤트만 필터링
+filtered_pay = pay_df[pay_df["event"].isin(selected_events)] if not pay_df.empty else pay_df
 
 def build_payment_data(events):
     all_rows = []
