@@ -14,42 +14,6 @@ from analyzer import (
     frequency_distribution,
 )
 
-# ── 테마 ──────────────────────────────────────────────────────────────────────
-_DARK  = {"bg": "#111111", "bg2": "#2A0D29", "text": "#F0D8EE", "accent": "#FCACF3"}
-_LIGHT = {"bg": "#FFFFFF", "bg2": "#F5EFF5", "text": "#1a1a1a", "accent": "#6E003D"}
-
-
-def _css(c: dict) -> str:
-    return (
-        f".stApp,[data-testid='stAppViewContainer']{{background-color:{c['bg']} !important}}"
-        f"section[data-testid='stSidebar']>div:first-child{{background-color:{c['bg2']} !important}}"
-        f"[data-testid='stHeader']{{background-color:{c['bg']} !important}}"
-        f".stApp,p,span,label,h1,h2,h3,h4,li,"
-        f"[data-testid='stMetricLabel'],[data-testid='stMetricValue']{{color:{c['text']} !important}}"
-        f"[data-testid='metric-container']{{background-color:{c['bg2']} !important;border-radius:8px;padding:1rem}}"
-        f".stTabs [data-baseweb='tab-list']{{background-color:{c['bg2']} !important}}"
-        f".stTabs [data-baseweb='tab']{{color:{c['text']} !important}}"
-        f".stTabs [aria-selected='true']{{background-color:{c['accent']}33 !important;color:{c['accent']} !important}}"
-        f".stButton>button{{background-color:#FCACF3 !important;color:#2A0D29 !important;border:none !important}}"
-        f"[data-testid='stSidebarContent'] label,"
-        f"[data-testid='stSidebarContent'] span,"
-        f"[data-testid='stSidebarContent'] p{{color:{c['text']} !important}}"
-    )
-
-
-def apply_theme() -> None:
-    mode = st.session_state.get("theme_mode", "system")
-    if mode == "dark":
-        block = _css(_DARK)
-    elif mode == "light":
-        block = _css(_LIGHT)
-    else:
-        block = (
-            f"@media(prefers-color-scheme:dark){{{_css(_DARK)}}}"
-            f"@media(prefers-color-scheme:light){{{_css(_LIGHT)}}}"
-        )
-    st.html(f"<style>{block}</style>")
-
 
 # ── 번역 사전 ──────────────────────────────────────────────────────────────────
 TRANSLATIONS = {
@@ -68,10 +32,6 @@ TRANSLATIONS = {
         "no_attendance": "출석 데이터를 찾을 수 없습니다. 이메일 컬럼 또는 CheckedInAt 컬럼을 확인해주세요.",
         "filter": "필터",
         "language": "언어 / Language",
-        "theme": "테마",
-        "theme_system": "💻 시스템",
-        "theme_light": "☀️ 라이트",
-        "theme_dark": "🌙 다크",
         "select_events": "분석할 이벤트 선택",
         "total_caption": "{n_events}개 이벤트 · {n_members}명",
         "select_one_event": "이벤트를 하나 이상 선택해주세요.",
@@ -128,10 +88,6 @@ TRANSLATIONS = {
         "no_attendance": "No attendance data found. Please check the email or CheckedInAt column.",
         "filter": "Filter",
         "language": "언어 / Language",
-        "theme": "Theme",
-        "theme_system": "💻 System",
-        "theme_light": "☀️ Light",
-        "theme_dark": "🌙 Dark",
         "select_events": "Select events to analyze",
         "total_caption": "{n_events} events · {n_members} members",
         "select_one_event": "Please select at least one event.",
@@ -207,7 +163,9 @@ def check_auth():
 
 
 check_auth()
-apply_theme()
+
+# WCAG 1.4.3: 버튼 분홍(#FCACF3) + 퍼플(#2A0D29) — 대비 10.8:1
+st.html("<style>.stButton>button{background-color:#FCACF3 !important;color:#2A0D29 !important;border:none !important}</style>")
 
 
 # ── 데이터 로드 ──────────────────────────────────────────────────────────────
@@ -250,16 +208,7 @@ with st.sidebar:
     with st.expander("⚙️ Settings", expanded=False):
         lang_choice = st.radio(t("language"), ["한국어", "English"], horizontal=True)
         st.session_state.lang = "ko" if lang_choice == "한국어" else "en"
-
-        theme_opts = [t("theme_system"), t("theme_light"), t("theme_dark")]
-        theme_choice = st.radio(t("theme"), theme_opts, horizontal=True)
-        if t("theme_dark") in theme_choice:
-            st.session_state.theme_mode = "dark"
-        elif t("theme_light") in theme_choice:
-            st.session_state.theme_mode = "light"
-        else:
-            st.session_state.theme_mode = "system"
-        apply_theme()
+        st.caption("🎨 " + ("테마는 우측 상단 ☰ → Settings에서 변경" if st.session_state.get("lang","ko")=="ko" else "Change theme via ☰ → Settings (top right)"))
 
     st.header(t("filter"))
     selected_events = st.multiselect(
