@@ -535,7 +535,7 @@ with tab5:
         p1.metric(t("pay_total_registered"), f"{total_reg}{t('unit_person')}")
         p2.metric(t("pay_total_paid"), f"{total_paid}{t('unit_person')}")
         p3.metric(t("pay_rate"), f"{overall_rate}%")
-        p4.metric(t("pay_revenue"), f"₩{total_revenue:,}")
+        # p4.metric(t("pay_revenue"), f"₩{total_revenue:,}")
 
         st.divider()
 
