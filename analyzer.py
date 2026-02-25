@@ -107,39 +107,3 @@ def frequency_distribution(matrix: pd.DataFrame) -> pd.DataFrame:
     return dist
 
 
-PRICE_KRW = 20_000
-
-
-def payment_summary(pay_df: pd.DataFrame) -> pd.DataFrame:
-    """이벤트별 결제 요약 (등록자, 결제완료, 미결제, 결제율, 매출)."""
-    results = []
-    for event, grp in pay_df.groupby("event"):
-        total = len(grp)
-        paid_count = int(grp["paid"].sum())
-        rate = round(paid_count / total * 100, 1) if total else 0
-        results.append({
-            "이벤트": event,
-            "등록자": total,
-            "결제완료": paid_count,
-            "미결제": total - paid_count,
-            "결제율(%)": rate,
-            # "매출(KRW)": paid_count * PRICE_KRW,
-        })
-    return pd.DataFrame(results)
-
-
-def payment_method_dist(pay_df: pd.DataFrame) -> pd.DataFrame:
-    """결제 방법별 인원 분포."""
-    paid_df = pay_df[pay_df["paid"] == True]
-    if paid_df.empty:
-        return pd.DataFrame(columns=["결제 방법", "인원"])
-    dist = paid_df["method"].value_counts().reset_index()
-    dist.columns = ["결제 방법", "인원"]
-    return dist
-
-
-def unpaid_members(pay_df: pd.DataFrame) -> pd.DataFrame:
-    """미결제 멤버 목록 (이벤트, 이름)."""
-    unpaid = pay_df[pay_df["paid"] == False][["event", "name"]].copy()
-    unpaid.columns = ["이벤트", "이름"]
-    return unpaid.reset_index(drop=True)
