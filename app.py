@@ -14,6 +14,69 @@ from analyzer import (
     frequency_distribution,
 )
 
+# ── 테마 ──────────────────────────────────────────────────────────────────────
+_DARK = {"bg": "#2A0D29", "bg2": "#4D1849", "text": "#F0D8EE", "accent": "#FCACF3"}
+_LIGHT = {"bg": "#FFFFFF", "bg2": "#F5EFF5", "text": "#2A0D29", "accent": "#6E003D"}
+
+
+def _css(c: dict) -> str:
+    return f"""
+    .stApp, [data-testid="stAppViewContainer"] {{
+        background-color: {c['bg']} !important;
+    }}
+    section[data-testid="stSidebar"] > div:first-child {{
+        background-color: {c['bg2']} !important;
+    }}
+    [data-testid="stHeader"] {{
+        background-color: {c['bg']} !important;
+    }}
+    .stApp, p, span, label, h1, h2, h3, h4, li,
+    [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{
+        color: {c['text']} !important;
+    }}
+    [data-testid="metric-container"] {{
+        background-color: {c['bg2']} !important;
+        border-radius: 8px; padding: 1rem;
+    }}
+    .stTabs [data-baseweb="tab-list"] {{
+        background-color: {c['bg2']} !important;
+    }}
+    .stTabs [data-baseweb="tab"] {{
+        color: {c['text']} !important;
+    }}
+    .stTabs [aria-selected="true"] {{
+        background-color: {c['accent']}33 !important;
+        color: {c['accent']} !important;
+    }}
+    .stButton > button {{
+        background-color: {c['accent']} !important;
+        color: {c['bg']} !important;
+        border: none !important;
+    }}
+    [data-testid="stSidebarContent"] label,
+    [data-testid="stSidebarContent"] span,
+    [data-testid="stSidebarContent"] p {{
+        color: {c['text']} !important;
+    }}
+    """
+
+
+def apply_theme() -> None:
+    mode = st.session_state.get("theme_mode", "system")
+    if mode == "dark":
+        css = f"<style>{_css(_DARK)}</style>"
+    elif mode == "light":
+        css = f"<style>{_css(_LIGHT)}</style>"
+    else:  # system
+        dark_css = _css(_DARK).replace("\n", " ")
+        light_css = _css(_LIGHT).replace("\n", " ")
+        css = f"""<style>
+        @media (prefers-color-scheme: dark)  {{ {dark_css} }}
+        @media (prefers-color-scheme: light) {{ {light_css} }}
+        </style>"""
+    st.markdown(css, unsafe_allow_html=True)
+
+
 # ── 번역 사전 ──────────────────────────────────────────────────────────────────
 TRANSLATIONS = {
     "ko": {
@@ -31,6 +94,10 @@ TRANSLATIONS = {
         "no_attendance": "출석 데이터를 찾을 수 없습니다. 이메일 컬럼 또는 CheckedInAt 컬럼을 확인해주세요.",
         "filter": "필터",
         "language": "언어 / Language",
+        "theme": "테마",
+        "theme_system": "💻 시스템",
+        "theme_light": "☀️ 라이트",
+        "theme_dark": "🌙 다크",
         "select_events": "분석할 이벤트 선택",
         "total_caption": "{n_events}개 이벤트 · {n_members}명",
         "select_one_event": "이벤트를 하나 이상 선택해주세요.",
@@ -87,6 +154,10 @@ TRANSLATIONS = {
         "no_attendance": "No attendance data found. Please check the email or CheckedInAt column.",
         "filter": "Filter",
         "language": "언어 / Language",
+        "theme": "Theme",
+        "theme_system": "💻 System",
+        "theme_light": "☀️ Light",
+        "theme_dark": "🌙 Dark",
         "select_events": "Select events to analyze",
         "total_caption": "{n_events} events · {n_members} members",
         "select_one_event": "Please select at least one event.",
@@ -162,6 +233,7 @@ def check_auth():
 
 
 check_auth()
+apply_theme()
 
 
 # ── 데이터 로드 ──────────────────────────────────────────────────────────────
@@ -203,6 +275,16 @@ all_events = list(matrix.columns)
 with st.sidebar:
     lang_choice = st.radio(t("language"), ["한국어", "English"], horizontal=True)
     st.session_state.lang = "ko" if lang_choice == "한국어" else "en"
+
+    theme_opts = [t("theme_system"), t("theme_light"), t("theme_dark")]
+    theme_choice = st.radio(t("theme"), theme_opts, horizontal=True)
+    if t("theme_dark") in theme_choice:
+        st.session_state.theme_mode = "dark"
+    elif t("theme_light") in theme_choice:
+        st.session_state.theme_mode = "light"
+    else:
+        st.session_state.theme_mode = "system"
+    apply_theme()
 
     st.header(t("filter"))
     selected_events = st.multiselect(
