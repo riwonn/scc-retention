@@ -14,7 +14,7 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 # 컬럼 탐색에 사용할 키워드
 EMAIL_KEYWORDS   = ["email", "이메일"]
 NAME_KEYWORDS    = ["이름", "name"]
-PAYMENT_KEYWORDS = ["결제", "payment"]
+PAYMENT_KEYWORDS = ["결제 방법", "결제방법", "payment method"]
 CHECKEDIN_COL    = "CheckedInAt"
 COUNT_COL        = "CheckinCount"
 
