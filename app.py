@@ -6,12 +6,16 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 
-from data_loader import load_all_events, build_attendance_matrix
+from data_loader import load_all_events, build_attendance_matrix, build_payment_data
 from analyzer import (
     event_summary,
     attendance_frequency,
     cohort_retention,
     frequency_distribution,
+    payment_summary,
+    payment_method_dist,
+    unpaid_members,
+    PRICE_KRW,
 )
 
 
@@ -89,6 +93,7 @@ TRANSLATIONS = {
         "tab2": "📊 참석 빈도",
         "tab3": "🔄 코호트 리텐션",
         "tab4": "🏅 멤버 순위",
+        "tab5": "💳 결제 분석",
         "bar_title": "이벤트별 신규 / 복귀 참석자",
         "bar_y": "인원",
         "line_title": "이벤트별 복귀율 (%)",
@@ -115,6 +120,23 @@ TRANSLATIONS = {
         "col_cohort_size": "코호트 크기",
         "col_rank": "순위",
         "col_name": "이름",
+        "pay_no_data": "결제 데이터가 없습니다. 스프레드시트에 '결제' 컬럼이 있는지 확인해주세요.",
+        "pay_total_registered": "총 등록자",
+        "pay_total_paid": "결제 완료",
+        "pay_rate": "전체 결제율",
+        "pay_revenue": "총 매출",
+        "pay_bar_title": "이벤트별 결제 현황",
+        "pay_bar_y": "인원",
+        "pay_rate_title": "이벤트별 결제율 (%)",
+        "pay_method_title": "결제 방법 분포",
+        "pay_unpaid_title": "미결제 멤버 목록",
+        "pay_unpaid_empty": "미결제 멤버가 없습니다.",
+        "col_paid": "결제완료",
+        "col_unpaid": "미결제",
+        "col_pay_rate": "결제율(%)",
+        "col_revenue": "매출(KRW)",
+        "col_method": "결제 방법",
+        "col_count": "인원",
     },
     "en": {
         "page_title": "Seoul Chess Club Retention Analysis",
@@ -149,6 +171,7 @@ TRANSLATIONS = {
         "tab2": "📊 Attendance Frequency",
         "tab3": "🔄 Cohort Retention",
         "tab4": "🏅 Member Rankings",
+        "tab5": "💳 Payment Analysis",
         "bar_title": "New vs. Returning Attendees per Event",
         "bar_y": "Count",
         "line_title": "Return Rate (%) per Event",
@@ -175,6 +198,23 @@ TRANSLATIONS = {
         "col_cohort_size": "Cohort Size",
         "col_rank": "Rank",
         "col_name": "Name",
+        "pay_no_data": "No payment data found. Check if there is a 'payment' column in the spreadsheet.",
+        "pay_total_registered": "Total Registered",
+        "pay_total_paid": "Paid",
+        "pay_rate": "Overall Payment Rate",
+        "pay_revenue": "Total Revenue",
+        "pay_bar_title": "Payment Status per Event",
+        "pay_bar_y": "People",
+        "pay_rate_title": "Payment Rate (%) per Event",
+        "pay_method_title": "Payment Method Distribution",
+        "pay_unpaid_title": "Unpaid Members",
+        "pay_unpaid_empty": "No unpaid members.",
+        "col_paid": "Paid",
+        "col_unpaid": "Unpaid",
+        "col_pay_rate": "Payment Rate (%)",
+        "col_revenue": "Revenue (KRW)",
+        "col_method": "Payment Method",
+        "col_count": "Count",
     },
 }
 
@@ -279,6 +319,9 @@ if not selected_events:
 filtered_matrix = matrix[selected_events]
 filtered_detail = detail_df[detail_df["event"].isin(selected_events)] if not detail_df.empty else detail_df
 
+pay_df = build_payment_data(events)
+filtered_pay = pay_df[pay_df["event"].isin(selected_events)] if not pay_df.empty else pay_df
+
 
 # ── 상단 KPI ─────────────────────────────────────────────────────────────────
 total_unique = filtered_matrix.index.nunique()
@@ -299,8 +342,8 @@ st.divider()
 
 
 # ── 탭 ───────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs(
-    [t("tab1"), t("tab2"), t("tab3"), t("tab4")]
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    [t("tab1"), t("tab2"), t("tab3"), t("tab4"), t("tab5")]
 )
 
 
@@ -461,3 +504,102 @@ with tab4:
     st.plotly_chart(fig_top, use_container_width=True)
 
     st.dataframe(display_freq, use_container_width=True)
+
+
+# ── Tab 5: 결제 분석 ─────────────────────────────────────────────────────────
+with tab5:
+    if filtered_pay.empty:
+        st.info(t("pay_no_data"))
+    else:
+        pay_sum = payment_summary(filtered_pay)
+        method_dist = payment_method_dist(filtered_pay)
+        unpaid = unpaid_members(filtered_pay)
+
+        # KPI
+        total_reg = int(pay_sum["등록자"].sum())
+        total_paid = int(pay_sum["결제완료"].sum())
+        overall_rate = round(total_paid / total_reg * 100, 1) if total_reg else 0
+        total_revenue = total_paid * PRICE_KRW
+
+        p1, p2, p3, p4 = st.columns(4)
+        p1.metric(t("pay_total_registered"), f"{total_reg}{t('unit_person')}")
+        p2.metric(t("pay_total_paid"), f"{total_paid}{t('unit_person')}")
+        p3.metric(t("pay_rate"), f"{overall_rate}%")
+        p4.metric(t("pay_revenue"), f"₩{total_revenue:,}")
+
+        st.divider()
+
+        # 이벤트별 결제 현황 바 차트
+        col_map_pay = {
+            "이벤트": t("col_event"),
+            "결제완료": t("col_paid"),
+            "미결제": t("col_unpaid"),
+            "결제율(%)": t("col_pay_rate"),
+            "매출(KRW)": t("col_revenue"),
+            "등록자": t("col_registered"),
+        }
+        display_pay = pay_sum.rename(columns=col_map_pay)
+
+        fig_pay_bar = px.bar(
+            display_pay,
+            x=t("col_event"),
+            y=[t("col_paid"), t("col_unpaid")],
+            barmode="stack",
+            color_discrete_map={t("col_paid"): "#34A853", t("col_unpaid"): "#EA4335"},
+            title=t("pay_bar_title"),
+            labels={"value": t("pay_bar_y"), "variable": ""},
+        )
+        fig_pay_bar.update_layout(legend_title_text="")
+        st.plotly_chart(fig_pay_bar, use_container_width=True)
+
+        col_left, col_right = st.columns(2)
+
+        # 결제율 라인 차트
+        with col_left:
+            fig_pay_rate = go.Figure()
+            fig_pay_rate.add_trace(go.Scatter(
+                x=display_pay[t("col_event")],
+                y=pay_sum["결제율(%)"].tolist(),
+                mode="lines+markers",
+                line=dict(color="#FCACF3", width=2),
+                name=t("col_pay_rate"),
+            ))
+            fig_pay_rate.update_layout(
+                title=t("pay_rate_title"),
+                yaxis=dict(range=[0, 100], ticksuffix="%"),
+                showlegend=False,
+            )
+            st.plotly_chart(fig_pay_rate, use_container_width=True)
+
+        # 결제 방법 파이 차트
+        with col_right:
+            if not method_dist.empty:
+                display_method = method_dist.rename(columns={
+                    "결제 방법": t("col_method"),
+                    "인원": t("col_count"),
+                })
+                fig_method = px.pie(
+                    display_method,
+                    names=t("col_method"),
+                    values=t("col_count"),
+                    title=t("pay_method_title"),
+                    hole=0.4,
+                    color_discrete_sequence=px.colors.sequential.Purples_r,
+                )
+                st.plotly_chart(fig_method, use_container_width=True)
+
+        # 이벤트별 요약 테이블
+        st.dataframe(display_pay, use_container_width=True, hide_index=True)
+
+        st.divider()
+
+        # 미결제 멤버 목록
+        st.subheader(t("pay_unpaid_title"))
+        if unpaid.empty:
+            st.success(t("pay_unpaid_empty"))
+        else:
+            display_unpaid = unpaid.rename(columns={
+                "이벤트": t("col_event"),
+                "이름": t("col_name"),
+            })
+            st.dataframe(display_unpaid, use_container_width=True, hide_index=True)

@@ -12,10 +12,11 @@ from google.oauth2.service_account import Credentials
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
 # 컬럼 탐색에 사용할 키워드
-EMAIL_KEYWORDS = ["email", "이메일"]
-NAME_KEYWORDS  = ["이름", "name"]
-CHECKEDIN_COL  = "CheckedInAt"
-COUNT_COL      = "CheckinCount"
+EMAIL_KEYWORDS   = ["email", "이메일"]
+NAME_KEYWORDS    = ["이름", "name"]
+PAYMENT_KEYWORDS = ["결제", "payment"]
+CHECKEDIN_COL    = "CheckedInAt"
+COUNT_COL        = "CheckinCount"
 
 
 @st.cache_resource(ttl=300)  # 5분 캐시
@@ -138,3 +139,54 @@ def build_attendance_matrix(
     detail_df["user_hash"] = detail_df["user_hash"].map(lambda h: name_map.get(h, h))
 
     return matrix, detail_df
+
+
+def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """
+    결제 컬럼이 있는 시트에서 결제 데이터를 추출합니다.
+    반환: user_hash, name, event, paid, method 컬럼의 DataFrame
+    """
+    rows = []
+    name_map: dict[str, str] = {}
+
+    for event_name, df in events.items():
+        email_col = find_column(df, EMAIL_KEYWORDS)
+        if email_col is None:
+            continue
+        payment_col = find_column(df, PAYMENT_KEYWORDS)
+        if payment_col is None:
+            continue
+        name_col = find_column(df, NAME_KEYWORDS)
+
+        for _, row in df.iterrows():
+            raw_email = row.get(email_col)
+            if pd.isna(raw_email):
+                continue
+            email_str = str(raw_email).strip()
+            if not email_str:
+                continue
+
+            user_hash = anonymize_email(email_str)
+
+            if name_col:
+                raw_name = row.get(name_col)
+                if not pd.isna(raw_name) and str(raw_name).strip():
+                    name_map[user_hash] = str(raw_name).strip()
+
+            raw_payment = row.get(payment_col)
+            paid = not pd.isna(raw_payment) and str(raw_payment).strip() != ""
+            method = str(raw_payment).strip() if paid else None
+
+            rows.append({
+                "user_hash": user_hash,
+                "event": event_name,
+                "paid": paid,
+                "method": method,
+            })
+
+    if not rows:
+        return pd.DataFrame()
+
+    pay_df = pd.DataFrame(rows)
+    pay_df["name"] = pay_df["user_hash"].map(lambda h: name_map.get(h, h))
+    return pay_df
