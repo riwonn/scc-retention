@@ -1,5 +1,5 @@
 """
-체스 모임 리텐션 대시보드
+체스 모임 리텐션 대시보드 / Chess Club Retention Dashboard
 """
 import streamlit as st
 import plotly.express as px
@@ -14,8 +14,131 @@ from analyzer import (
     frequency_distribution,
 )
 
+# ── 번역 사전 ──────────────────────────────────────────────────────────────────
+TRANSLATIONS = {
+    "ko": {
+        "page_title": "모임 리텐션 분석",
+        "app_title": "♟️ 모임 리텐션 대시보드",
+        "enter_password": "비밀번호를 입력하세요",
+        "password": "비밀번호",
+        "login": "로그인",
+        "wrong_password": "비밀번호가 틀렸습니다.",
+        "refresh": "🔄 새로고침",
+        "no_spreadsheet_id": "`secrets.toml`에 `spreadsheet_id`를 설정해주세요.",
+        "loading": "Google Sheets에서 데이터 불러오는 중...",
+        "load_failed": "데이터 로드 실패: ",
+        "no_data": "시트에 데이터가 없습니다.",
+        "no_attendance": "출석 데이터를 찾을 수 없습니다. 이메일 컬럼 또는 CheckedInAt 컬럼을 확인해주세요.",
+        "filter": "필터",
+        "language": "언어 / Language",
+        "select_events": "분석할 이벤트 선택",
+        "total_caption": "{n_events}개 이벤트 · {n_members}명",
+        "select_one_event": "이벤트를 하나 이상 선택해주세요.",
+        "total_unique": "총 고유 참석자",
+        "n_events": "이벤트 수",
+        "returning_2plus": "2회 이상 참석자",
+        "returning_help": "재방문 경험이 있는 멤버 수",
+        "avg_per_person": "1인당 평균 참석",
+        "unit_person": "명",
+        "unit_times": "회",
+        "tab1": "📅 이벤트별 요약",
+        "tab2": "📊 참석 빈도",
+        "tab3": "🔄 코호트 리텐션",
+        "tab4": "🏅 멤버 순위",
+        "bar_title": "이벤트별 신규 / 복귀 참석자",
+        "bar_y": "인원",
+        "line_title": "이벤트별 복귀율 (%)",
+        "hist_title": "참석 횟수 분포 (몇 번 온 사람이 몇 명인가)",
+        "pie_title": "참석 횟수별 비율",
+        "pie_template": "%{label}회: %{percent}",
+        "cohort_no_data": "코호트 분석을 위한 데이터가 충분하지 않습니다.",
+        "cohort_caption": "각 셀: 해당 코호트 중 N번째 이벤트에도 참석한 비율 (%)",
+        "cohort_title": "코호트 리텐션 히트맵",
+        "cohort_x": "첫 참석 기준 +N번째 이벤트",
+        "cohort_y": "코호트 (첫 참석 이벤트)",
+        "cohort_hover": "코호트: %{y}<br>오프셋: %{x}<br>리텐션: %{z:.1f}%<extra></extra>",
+        "member_caption": "이름 컬럼이 없는 경우 익명 ID(#해시)로 표시됩니다.",
+        "top_n_title": "참석 횟수 상위 {n}명",
+        "member_label": "이름",
+        "col_event": "이벤트",
+        "col_registered": "등록자",
+        "col_attended": "참석자",
+        "col_new": "신규",
+        "col_returning": "복귀",
+        "col_retention": "복귀율(%)",
+        "col_attend_count": "참석 횟수",
+        "col_people_count": "인원 수",
+        "col_cohort_size": "코호트 크기",
+        "col_rank": "순위",
+        "col_name": "이름",
+    },
+    "en": {
+        "page_title": "Club Retention Analysis",
+        "app_title": "♟️ Club Retention Dashboard",
+        "enter_password": "Enter your password",
+        "password": "Password",
+        "login": "Login",
+        "wrong_password": "Incorrect password.",
+        "refresh": "🔄 Refresh",
+        "no_spreadsheet_id": "Please set `spreadsheet_id` in `secrets.toml`.",
+        "loading": "Loading data from Google Sheets...",
+        "load_failed": "Failed to load data: ",
+        "no_data": "No data found in the sheet.",
+        "no_attendance": "No attendance data found. Please check the email or CheckedInAt column.",
+        "filter": "Filter",
+        "language": "언어 / Language",
+        "select_events": "Select events to analyze",
+        "total_caption": "{n_events} events · {n_members} members",
+        "select_one_event": "Please select at least one event.",
+        "total_unique": "Total Unique Attendees",
+        "n_events": "Events",
+        "returning_2plus": "Returned 2+ Times",
+        "returning_help": "Members who have attended more than once",
+        "avg_per_person": "Avg. Attendance / Person",
+        "unit_person": "",
+        "unit_times": "",
+        "tab1": "📅 Event Summary",
+        "tab2": "📊 Attendance Frequency",
+        "tab3": "🔄 Cohort Retention",
+        "tab4": "🏅 Member Rankings",
+        "bar_title": "New vs. Returning Attendees per Event",
+        "bar_y": "Count",
+        "line_title": "Return Rate (%) per Event",
+        "hist_title": "Attendance Frequency Distribution",
+        "pie_title": "Attendance Frequency Breakdown",
+        "pie_template": "%{label}x: %{percent}",
+        "cohort_no_data": "Not enough data for cohort analysis.",
+        "cohort_caption": "Each cell: % of cohort who also attended the Nth event",
+        "cohort_title": "Cohort Retention Heatmap",
+        "cohort_x": "+N events from first attendance",
+        "cohort_y": "Cohort (first event attended)",
+        "cohort_hover": "Cohort: %{y}<br>Offset: %{x}<br>Retention: %{z:.1f}%<extra></extra>",
+        "member_caption": "Shown as anonymous ID (#hash) if no name column exists.",
+        "top_n_title": "Top {n} Members by Attendance",
+        "member_label": "Name",
+        "col_event": "Event",
+        "col_registered": "Registered",
+        "col_attended": "Attended",
+        "col_new": "New",
+        "col_returning": "Returning",
+        "col_retention": "Return Rate (%)",
+        "col_attend_count": "Times Attended",
+        "col_people_count": "People",
+        "col_cohort_size": "Cohort Size",
+        "col_rank": "Rank",
+        "col_name": "Name",
+    },
+}
+
+
+def t(key: str, **kwargs) -> str:
+    lang = st.session_state.get("lang", "ko")
+    text = TRANSLATIONS[lang].get(key, key)
+    return text.format(**kwargs) if kwargs else text
+
+
 st.set_page_config(
-    page_title="모임 리텐션 분석",
+    page_title="♟️ Retention Dashboard",
     page_icon="♟️",
     layout="wide",
 )
@@ -26,15 +149,15 @@ def check_auth():
     if st.session_state.get("authenticated"):
         return True
 
-    st.title("♟️ 모임 리텐션 대시보드")
-    st.subheader("비밀번호를 입력하세요")
-    pw = st.text_input("비밀번호", type="password", key="pw_input")
-    if st.button("로그인"):
+    st.title(t("app_title"))
+    st.subheader(t("enter_password"))
+    pw = st.text_input(t("password"), type="password", key="pw_input")
+    if st.button(t("login")):
         if pw == st.secrets.get("password", ""):
             st.session_state.authenticated = True
             st.rerun()
         else:
-            st.error("비밀번호가 틀렸습니다.")
+            st.error(t("wrong_password"))
     st.stop()
 
 
@@ -44,53 +167,55 @@ check_auth()
 # ── 데이터 로드 ──────────────────────────────────────────────────────────────
 spreadsheet_id = st.secrets.get("spreadsheet_id", "")
 
-st.title("♟️ 모임 리텐션 대시보드")
+st.title(t("app_title"))
 
 col_title, col_refresh = st.columns([8, 1])
 with col_refresh:
-    if st.button("🔄 새로고침"):
+    if st.button(t("refresh")):
         st.cache_data.clear()
         st.cache_resource.clear()
         st.rerun()
 
 if not spreadsheet_id:
-    st.error("`secrets.toml`에 `spreadsheet_id`를 설정해주세요.")
+    st.error(t("no_spreadsheet_id"))
     st.stop()
 
-with st.spinner("Google Sheets에서 데이터 불러오는 중..."):
+with st.spinner(t("loading")):
     try:
         events = load_all_events(spreadsheet_id)
     except Exception as e:
-        st.error(f"데이터 로드 실패: {e}")
+        st.error(t("load_failed") + str(e))
         st.stop()
 
 if not events:
-    st.warning("시트에 데이터가 없습니다.")
+    st.warning(t("no_data"))
     st.stop()
 
 matrix, detail_df = build_attendance_matrix(events)
 
 if matrix.empty:
-    st.warning("출석 데이터를 찾을 수 없습니다. 이메일 컬럼 또는 CheckedInAt 컬럼을 확인해주세요.")
+    st.warning(t("no_attendance"))
     st.stop()
 
 
-# ── 사이드바: 이벤트 선택 ────────────────────────────────────────────────────
+# ── 사이드바: 언어 선택 + 이벤트 필터 ────────────────────────────────────────
 all_events = list(matrix.columns)
 with st.sidebar:
-    st.header("필터")
+    lang_choice = st.radio(t("language"), ["한국어", "English"], horizontal=True)
+    st.session_state.lang = "ko" if lang_choice == "한국어" else "en"
+
+    st.header(t("filter"))
     selected_events = st.multiselect(
-        "분석할 이벤트 선택",
+        t("select_events"),
         options=all_events,
         default=all_events,
     )
-    st.caption(f"전체 {len(all_events)}개 이벤트 · {matrix.shape[0]}명")
+    st.caption(t("total_caption", n_events=len(all_events), n_members=matrix.shape[0]))
 
 if not selected_events:
-    st.warning("이벤트를 하나 이상 선택해주세요.")
+    st.warning(t("select_one_event"))
     st.stop()
 
-# 선택한 이벤트만 필터링
 filtered_matrix = matrix[selected_events]
 filtered_detail = detail_df[detail_df["event"].isin(selected_events)] if not detail_df.empty else detail_df
 
@@ -101,19 +226,21 @@ total_events = len(selected_events)
 multi_attendees = int((filtered_matrix.sum(axis=1) > 1).sum())
 avg_events_per_person = filtered_matrix.sum(axis=1).mean()
 
+up = t("unit_person")
+ut = t("unit_times")
+
 k1, k2, k3, k4 = st.columns(4)
-k1.metric("총 고유 참석자", f"{total_unique}명")
-k2.metric("이벤트 수", f"{total_events}회")
-k3.metric("2회 이상 참석자", f"{multi_attendees}명",
-          help="재방문 경험이 있는 멤버 수")
-k4.metric("1인당 평균 참석", f"{avg_events_per_person:.1f}회")
+k1.metric(t("total_unique"), f"{total_unique}{up}")
+k2.metric(t("n_events"), f"{total_events}{ut}")
+k3.metric(t("returning_2plus"), f"{multi_attendees}{up}", help=t("returning_help"))
+k4.metric(t("avg_per_person"), f"{avg_events_per_person:.1f}{ut}")
 
 st.divider()
 
 
 # ── 탭 ───────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4 = st.tabs(
-    ["📅 이벤트별 요약", "📊 참석 빈도", "🔄 코호트 리텐션", "🏅 멤버 순위"]
+    [t("tab1"), t("tab2"), t("tab3"), t("tab4")]
 )
 
 
@@ -121,20 +248,29 @@ tab1, tab2, tab3, tab4 = st.tabs(
 with tab1:
     summary_df = event_summary(filtered_matrix, filtered_detail)
 
-    # 차트: 신규 vs 복귀
+    # 표시용 컬럼명 번역
+    col_map = {
+        "이벤트": t("col_event"),
+        "등록자": t("col_registered"),
+        "참석자": t("col_attended"),
+        "신규": t("col_new"),
+        "복귀": t("col_returning"),
+        "복귀율(%)": t("col_retention"),
+    }
+    display_summary = summary_df.rename(columns=col_map)
+
     fig_bar = px.bar(
-        summary_df,
-        x="이벤트",
-        y=["신규", "복귀"],
+        display_summary,
+        x=t("col_event"),
+        y=[t("col_new"), t("col_returning")],
         barmode="stack",
-        color_discrete_map={"신규": "#4C8BF5", "복귀": "#34A853"},
-        title="이벤트별 신규 / 복귀 참석자",
-        labels={"value": "인원", "variable": "구분"},
+        color_discrete_map={t("col_new"): "#4C8BF5", t("col_returning"): "#34A853"},
+        title=t("bar_title"),
+        labels={"value": t("bar_y"), "variable": ""},
     )
     fig_bar.update_layout(legend_title_text="")
     st.plotly_chart(fig_bar, use_container_width=True)
 
-    # 복귀율 라인
     retention_vals = [
         v if v != "-" else None for v in summary_df["복귀율(%)"].tolist()
     ]
@@ -142,50 +278,53 @@ with tab1:
         fig_line = go.Figure()
         fig_line.add_trace(
             go.Scatter(
-                x=summary_df["이벤트"],
+                x=display_summary[t("col_event")],
                 y=retention_vals,
                 mode="lines+markers",
                 line=dict(color="#FBBC05", width=2),
-                name="복귀율(%)",
+                name=t("col_retention"),
             )
         )
         fig_line.update_layout(
-            title="이벤트별 복귀율 (%)",
+            title=t("line_title"),
             yaxis=dict(range=[0, 100], ticksuffix="%"),
             showlegend=False,
         )
         st.plotly_chart(fig_line, use_container_width=True)
 
-    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+    st.dataframe(display_summary, use_container_width=True, hide_index=True)
 
 
 # ── Tab 2: 참석 빈도 분포 ────────────────────────────────────────────────────
 with tab2:
     dist_df = frequency_distribution(filtered_matrix)
+    display_dist = dist_df.rename(columns={
+        "참석 횟수": t("col_attend_count"),
+        "인원 수": t("col_people_count"),
+    })
 
     fig_hist = px.bar(
-        dist_df,
-        x="참석 횟수",
-        y="인원 수",
-        title="참석 횟수 분포 (몇 번 온 사람이 몇 명인가)",
-        color="인원 수",
+        display_dist,
+        x=t("col_attend_count"),
+        y=t("col_people_count"),
+        title=t("hist_title"),
+        color=t("col_people_count"),
         color_continuous_scale="Blues",
-        text="인원 수",
+        text=t("col_people_count"),
     )
     fig_hist.update_traces(textposition="outside")
     fig_hist.update_layout(coloraxis_showscale=False)
     st.plotly_chart(fig_hist, use_container_width=True)
 
-    # 누적 비율 파이
     fig_pie = px.pie(
-        dist_df,
-        names="참석 횟수",
-        values="인원 수",
-        title="참석 횟수별 비율",
+        display_dist,
+        names=t("col_attend_count"),
+        values=t("col_people_count"),
+        title=t("pie_title"),
         hole=0.4,
     )
     fig_pie.update_traces(
-        texttemplate="%{label}회: %{percent}",
+        texttemplate=t("pie_template"),
         textposition="outside",
     )
     st.plotly_chart(fig_pie, use_container_width=True)
@@ -196,11 +335,10 @@ with tab3:
     cohort_df = cohort_retention(filtered_matrix)
 
     if cohort_df.empty:
-        st.info("코호트 분석을 위한 데이터가 충분하지 않습니다.")
+        st.info(t("cohort_no_data"))
     else:
-        st.caption("각 셀: 해당 코호트 중 N번째 이벤트에도 참석한 비율 (%)")
+        st.caption(t("cohort_caption"))
 
-        # 숫자 컬럼만 히트맵
         numeric_cols = [c for c in cohort_df.columns if c != "코호트 크기"]
         heatmap_df = cohort_df[numeric_cols].copy()
 
@@ -215,41 +353,46 @@ with tab3:
                 text=[[f"{v:.0f}%" if pd.notna(v) else "" for v in row]
                       for row in heatmap_df.values],
                 texttemplate="%{text}",
-                hovertemplate="코호트: %{y}<br>오프셋: %{x}<br>리텐션: %{z:.1f}%<extra></extra>",
+                hovertemplate=t("cohort_hover"),
             )
         )
         fig_hm.update_layout(
-            title="코호트 리텐션 히트맵",
-            xaxis_title="첫 참석 기준 +N번째 이벤트",
-            yaxis_title="코호트 (첫 참석 이벤트)",
+            title=t("cohort_title"),
+            xaxis_title=t("cohort_x"),
+            yaxis_title=t("cohort_y"),
             height=max(300, len(cohort_df) * 50 + 100),
         )
         st.plotly_chart(fig_hm, use_container_width=True)
 
+        display_cohort = cohort_df.rename(columns={"코호트 크기": t("col_cohort_size")})
+        display_numeric = [c for c in display_cohort.columns if c != t("col_cohort_size")]
         st.dataframe(
-            cohort_df.style.format("{:.1f}%", subset=numeric_cols, na_rep="-"),
+            display_cohort.style.format("{:.1f}%", subset=display_numeric, na_rep="-"),
             use_container_width=True,
         )
 
 
-# ── Tab 4: 멤버 순위 (익명화) ────────────────────────────────────────────────
+# ── Tab 4: 멤버 순위 ─────────────────────────────────────────────────────────
 with tab4:
     freq_df = attendance_frequency(filtered_matrix)
-    freq_df.index.name = "순위"
+    freq_df.index.name = t("col_rank")
+    display_freq = freq_df.rename(columns={
+        "user_id": t("member_label"),
+        "참석 횟수": t("col_attend_count"),
+    })
 
-    st.caption("이름 컬럼이 없는 경우 익명 ID(#해시)로 표시됩니다.")
+    st.caption(t("member_caption"))
 
-    # 상위 참석자 막대 차트
-    top_n = min(20, len(freq_df))
+    top_n = min(20, len(display_freq))
     fig_top = px.bar(
-        freq_df.head(top_n),
-        x="참석 횟수",
-        y="user_id",
+        display_freq.head(top_n),
+        x=t("col_attend_count"),
+        y=t("member_label"),
         orientation="h",
-        title=f"참석 횟수 상위 {top_n}명",
-        color="참석 횟수",
+        title=t("top_n_title", n=top_n),
+        color=t("col_attend_count"),
         color_continuous_scale="Purples",
-        labels={"user_id": "이름"},
+        labels={t("member_label"): t("member_label")},
     )
     fig_top.update_layout(
         yaxis=dict(autorange="reversed"),
@@ -257,4 +400,4 @@ with tab4:
     )
     st.plotly_chart(fig_top, use_container_width=True)
 
-    st.dataframe(freq_df, use_container_width=True)
+    st.dataframe(display_freq, use_container_width=True)
