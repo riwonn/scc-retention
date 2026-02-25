@@ -20,10 +20,11 @@ COUNT_COL      = "CheckinCount"
 
 @st.cache_resource(ttl=300)  # 5분 캐시
 def get_gspread_client():
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=SCOPES,
-    )
+    info = dict(st.secrets["gcp_service_account"])
+    # TOML 형식에 따라 \n이 이스케이프된 경우 실제 줄바꿈으로 변환
+    if "private_key" in info:
+        info["private_key"] = info["private_key"].replace("\\n", "\n")
+    creds = Credentials.from_service_account_info(info, scopes=SCOPES)
     return gspread.authorize(creds)
 
 
