@@ -63,6 +63,27 @@ def anonymize_email(email: str) -> str:
     return f"#{h[:8]}"
 
 
+def debug_worksheet(spreadsheet_id: str, sheet_title: str) -> str:
+    """캐시 없이 특정 시트를 직접 조회해 결과 또는 에러 메시지를 반환합니다."""
+    client = get_gspread_client()
+    spreadsheet = client.open_by_key(spreadsheet_id)
+    for ws in spreadsheet.worksheets():
+        if ws.title == sheet_title:
+            try:
+                values = ws.get_all_values()
+                return f"✅ 성공: {len(values)}행 반환 (헤더 포함)"
+            except Exception as e:
+                return f"❌ 예외 발생: {type(e).__name__}: {e}"
+    return "❌ 시트를 찾을 수 없음"
+
+
+def get_worksheet_names(spreadsheet_id: str) -> list[str]:
+    """캐시 없이 스프레드시트의 모든 시트 탭 이름을 반환합니다."""
+    client = get_gspread_client()
+    spreadsheet = client.open_by_key(spreadsheet_id)
+    return [ws.title for ws in spreadsheet.worksheets()]
+
+
 @st.cache_data(ttl=300)  # 5분 캐시
 def load_all_events(spreadsheet_id: str) -> dict[str, pd.DataFrame]:
     """
@@ -73,10 +94,25 @@ def load_all_events(spreadsheet_id: str) -> dict[str, pd.DataFrame]:
 
     events: dict[str, pd.DataFrame] = {}
     for worksheet in spreadsheet.worksheets():
-        records = worksheet.get_all_records()
-        if not records:
+        try:
+            # get_all_values() 대신 셀 범위로 직접 요청 — 시트 이름 특수문자 우회
+            values = spreadsheet.values_get(
+                f"'{worksheet.title.replace(chr(39), chr(39)*2)}'",
+                params={"valueRenderOption": "FORMATTED_VALUE"},
+            ).get("values", [])
+        except Exception:
+            try:
+                # fallback: gid 기반으로 worksheet 객체를 통해 다시 시도
+                values = worksheet.get_all_values()
+            except Exception:
+                continue
+        if len(values) < 2:
             continue
-        df = pd.DataFrame(records)
+        headers, *rows = values
+        # 행 길이가 헤더보다 짧은 경우 빈 문자열로 패딩
+        n = len(headers)
+        rows = [r + [""] * (n - len(r)) for r in rows]
+        df = pd.DataFrame(rows, columns=headers)
         # 빈 문자열 → NaN
         df.replace("", pd.NA, inplace=True)
         events[worksheet.title] = df

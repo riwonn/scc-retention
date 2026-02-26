@@ -6,7 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 
-from data_loader import load_all_events, build_attendance_matrix, build_payment_data, build_referral_data
+from data_loader import load_all_events, build_attendance_matrix, build_payment_data, build_referral_data, get_worksheet_names, debug_worksheet
 from analyzer import (
     event_summary,
     attendance_frequency,
@@ -334,6 +334,24 @@ with st.sidebar:
         else:
             st.session_state.theme_mode = "system"
         apply_theme()
+
+    with st.expander("🔍 Debug: 로딩 현황", expanded=False):
+        all_ws_names = get_worksheet_names(spreadsheet_id)
+        st.write(f"**gspread가 인식한 시트 수:** {len(all_ws_names)}")
+        st.write(f"**실제 로딩된 시트 수:** {len(events)}")
+        for name in all_ws_names:
+            in_events = name in events
+            in_matrix = name in matrix.columns
+            if in_matrix:
+                status = "✅ 정상"
+            elif in_events:
+                status = "⚠️ 로딩됨 (매트릭스 제외)"
+            else:
+                status = "❌ 로딩 실패"
+            st.write(f"- `{name}` — {status}")
+            if not in_events:
+                detail = debug_worksheet(spreadsheet_id, name)
+                st.write(f"  → {detail}")
 
     st.header(t("filter"))
     selected_events = st.multiselect(
