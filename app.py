@@ -147,6 +147,9 @@ TRANSLATIONS = {
         "pay_bar_y": "인원",
         "pay_rate_title": "이벤트별 결제율 (%)",
         "pay_method_title": "결제 방법 분포",
+        "pay_method_bank": "계좌이체",
+        "pay_method_cash": "현금",
+        "pay_method_other": "기타",
         "pay_unpaid_title": "미결제 멤버 목록",
         "pay_unpaid_empty": "미결제 멤버가 없습니다.",
         "col_paid": "결제완료",
@@ -232,6 +235,9 @@ TRANSLATIONS = {
         "pay_bar_y": "People",
         "pay_rate_title": "Payment Rate (%) per Event",
         "pay_method_title": "Payment Method Distribution",
+        "pay_method_bank": "Bank Transfer",
+        "pay_method_cash": "Cash",
+        "pay_method_other": "Other",
         "pay_unpaid_title": "Unpaid Members",
         "pay_unpaid_empty": "No unpaid members.",
         "col_paid": "Paid",
@@ -604,7 +610,16 @@ with tab5:
         # 결제 방법 파이 차트
         with col_right:
             if not method_dist.empty:
-                display_method = method_dist.rename(columns={
+                _method_label = {
+                    "계좌이체": t("pay_method_bank"),
+                    "현금": t("pay_method_cash"),
+                    "기타": t("pay_method_other"),
+                }
+                display_method = method_dist.copy()
+                display_method["결제 방법"] = display_method["결제 방법"].map(
+                    lambda x: _method_label.get(x, x)
+                )
+                display_method = display_method.rename(columns={
                     "결제 방법": t("col_method"),
                     "인원": t("col_count"),
                 })
