@@ -538,6 +538,18 @@ with tab4:
 
 # ── Tab 5: 결제 분석 ─────────────────────────────────────────────────────────
 with tab5:
+    with st.expander("🔍 Debug: 컬럼 감지 현황", expanded=True):
+        from data_loader import find_payment_column
+        for ev_name, ev_df in events.items():
+            detected = find_payment_column(ev_df)
+            cols_preview = list(ev_df.columns)
+            st.markdown(f"**{ev_name}** → 감지된 결제 컬럼: `{detected}`")
+            st.caption("전체 컬럼: " + " | ".join(f"`{c[:40]}`" for c in cols_preview))
+            if detected:
+                sample = ev_df[detected].dropna().astype(str).str.strip()
+                sample = sample[sample != ""].head(5).tolist()
+                st.caption(f"샘플 값: {sample}")
+
     if filtered_pay.empty:
         st.info(t("pay_no_data"))
     else:
