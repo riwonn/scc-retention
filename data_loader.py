@@ -199,10 +199,22 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
             )
 
         payment_series = df.loc[email_series.index, payment_col]
-        paid_series = payment_series.notna() & (
-            payment_series.astype(str).str.strip() != ""
-        )
-        method_series = payment_series.astype(str).str.strip().where(paid_series)
+        payment_str = payment_series.astype(str).str.strip()
+
+        # 비어있지 않으면 결제 완료 (계좌이체든 현금이든 모두 paid)
+        paid_series = payment_series.notna() & (payment_str != "") & (payment_str != "nan")
+
+        def _classify(x: str) -> str:
+            xl = x.lower()
+            if "입금" in x:
+                return "계좌이체"
+            if "직접" in x or "현금" in x or "cash" in xl:
+                return "현금"
+            if x and x != "nan":
+                return "기타"
+            return ""
+
+        method_series = payment_str.apply(_classify).where(paid_series)
 
         all_dfs.append(
             pd.DataFrame(
