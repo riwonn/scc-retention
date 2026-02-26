@@ -14,9 +14,10 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 # 컬럼 탐색에 사용할 키워드
 EMAIL_KEYWORDS   = ["email", "이메일"]
 NAME_KEYWORDS    = ["이름", "name"]
-PAYMENT_KEYWORDS = ["계좌이체", "참가비", "결제 방법", "결제방법", "payment method"]
-CHECKEDIN_COL    = "CheckedInAt"
-COUNT_COL        = "CheckinCount"
+PAYMENT_KEYWORDS  = ["결제 방법", "결제방법", "payment method", "계좌이체", "참가비"]
+REFERRAL_KEYWORDS = ["알게 되셨나요", "어떻게 알게", "how did you find", "find about"]
+CHECKEDIN_COL     = "CheckedInAt"
+COUNT_COL         = "CheckinCount"
 
 
 @st.cache_resource(ttl=300)  # 5분 캐시
@@ -27,6 +28,20 @@ def get_gspread_client():
         info["private_key"] = info["private_key"].replace("\\n", "\n")
     creds = Credentials.from_service_account_info(info, scopes=SCOPES)
     return gspread.authorize(creds)
+
+
+def find_payment_column(df: pd.DataFrame) -> str | None:
+    """결제 방법 컬럼만을 위한 정밀 탐색.
+    헤더가 '결제 방법'으로 시작하는 컬럼을 최우선으로 찾고,
+    없으면 고유 키워드(계좌이체·참가비)가 포함된 컬럼을 반환합니다."""
+    for col in df.columns:
+        c = col.strip().lower()
+        if c.startswith("결제 방법") or c.startswith("결제방법"):
+            return col
+    for col in df.columns:
+        if "계좌이체" in col or "참가비" in col:
+            return col
+    return None
 
 
 def find_column(df: pd.DataFrame, keywords: list[str]) -> str | None:
@@ -156,7 +171,7 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
         if email_col is None:
             continue
 
-        payment_col = find_column(df, PAYMENT_KEYWORDS)
+        payment_col = find_payment_column(df)
         if payment_col is None:
             continue
 
@@ -183,23 +198,11 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
                 )
             )
 
-        # 🔥 반드시 for문 안에 있어야 함
         payment_series = df.loc[email_series.index, payment_col]
-        payment_str = payment_series.astype(str).str.strip()
-
-        # 결제 여부
-        paid_series = payment_str.str.contains("입금했어요", na=False)
-
-        # 결제 방법 분류
-        method_series = payment_str.apply(
-            lambda x: (
-                "계좌이체"
-                if "입금했어요" in x
-                else "현금"
-                if ("직접" in x or "현금" in x)
-                else "기타"
-            )
+        paid_series = payment_series.notna() & (
+            payment_series.astype(str).str.strip() != ""
         )
+        method_series = payment_series.astype(str).str.strip().where(paid_series)
 
         all_dfs.append(
             pd.DataFrame(
@@ -218,3 +221,21 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
     pay_df = pd.concat(all_dfs, ignore_index=True)
     pay_df["name"] = pay_df["user_hash"].map(lambda h: name_map.get(h, h))
     return pay_df
+
+
+def build_referral_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """
+    '어떻게 알게 되셨나요' 컬럼이 있는 시트에서 유입 경로 데이터를 추출합니다.
+    반환: event, source 컬럼의 DataFrame
+    """
+    rows = []
+    for event_name, df in events.items():
+        referral_col = find_column(df, REFERRAL_KEYWORDS)
+        if referral_col is None:
+            continue
+        for val in df[referral_col].dropna():
+            source = str(val).strip()
+            if source:
+                rows.append({"event": event_name, "source": source})
+
+    return pd.DataFrame(rows) if rows else pd.DataFrame()

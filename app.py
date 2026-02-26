@@ -6,7 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 
-from data_loader import load_all_events, build_attendance_matrix, build_payment_data
+from data_loader import load_all_events, build_attendance_matrix, build_payment_data, build_referral_data
 from analyzer import (
     event_summary,
     attendance_frequency,
@@ -15,7 +15,8 @@ from analyzer import (
     payment_summary,
     payment_method_dist,
     unpaid_members,
-    # PRICE_KRW,
+    referral_distribution,
+    referral_by_event,
 )
 
 
@@ -104,6 +105,13 @@ TRANSLATIONS = {
         "tab3": "🔄 코호트 리텐션",
         "tab4": "🏅 멤버 순위",
         "tab5": "💳 결제 분석",
+        "tab6": "📣 유입 경로",
+        "ref_no_data": "유입 경로 데이터가 없습니다. '어떻게 알게 되셨나요' 컬럼을 확인해주세요.",
+        "ref_total": "총 응답 수",
+        "ref_dist_title": "유입 경로 분포 (전체)",
+        "ref_event_title": "이벤트별 유입 경로",
+        "col_source": "유입 경로",
+        "col_source_count": "인원",
         "bar_title": "이벤트별 신규 / 복귀 참석자",
         "bar_y": "인원",
         "line_title": "이벤트별 복귀율 (%)",
@@ -182,6 +190,13 @@ TRANSLATIONS = {
         "tab3": "🔄 Cohort Retention",
         "tab4": "🏅 Member Rankings",
         "tab5": "💳 Payment Analysis",
+        "tab6": "📣 Referral Sources",
+        "ref_no_data": "No referral data found. Check for a 'How did you find this event?' column.",
+        "ref_total": "Total Responses",
+        "ref_dist_title": "Referral Source Distribution (All Events)",
+        "ref_event_title": "Referral Sources by Event",
+        "col_source": "Source",
+        "col_source_count": "Count",
         "bar_title": "New vs. Returning Attendees per Event",
         "bar_y": "Count",
         "line_title": "Return Rate (%) per Event",
@@ -334,6 +349,9 @@ pay_df = build_payment_data(events)
 # 선택된 이벤트만 필터링
 filtered_pay = pay_df[pay_df["event"].isin(selected_events)] if not pay_df.empty else pay_df
 
+ref_df = build_referral_data(events)
+filtered_ref = ref_df[ref_df["event"].isin(selected_events)] if not ref_df.empty else ref_df
+
 
 # ── 상단 KPI ─────────────────────────────────────────────────────────────────
 total_unique = filtered_matrix.index.nunique()
@@ -354,8 +372,8 @@ st.divider()
 
 
 # ── 탭 ───────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    [t("tab1"), t("tab2"), t("tab3"), t("tab4"), t("tab5")]
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+    [t("tab1"), t("tab2"), t("tab3"), t("tab4"), t("tab5"), t("tab6")]
 )
 
 
@@ -615,3 +633,64 @@ with tab5:
                 "이름": t("col_name"),
             })
             st.dataframe(display_unpaid, use_container_width=True, hide_index=True)
+
+
+# ── Tab 6: 유입 경로 ──────────────────────────────────────────────────────────
+with tab6:
+    if filtered_ref.empty:
+        st.info(t("ref_no_data"))
+    else:
+        dist_df = referral_distribution(filtered_ref)
+        by_event_df = referral_by_event(filtered_ref)
+
+        total_responses = len(filtered_ref)
+        st.metric(t("ref_total"), f"{total_responses}{t('unit_person')}")
+
+        st.divider()
+
+        col_l, col_r = st.columns([1, 1])
+
+        with col_l:
+            display_dist = dist_df.rename(columns={
+                "유입 경로": t("col_source"),
+                "인원": t("col_source_count"),
+            })
+            fig_ref_bar = px.bar(
+                display_dist,
+                x=t("col_source_count"),
+                y=t("col_source"),
+                orientation="h",
+                title=t("ref_dist_title"),
+                color=t("col_source_count"),
+                color_continuous_scale="Purples",
+                text=t("col_source_count"),
+            )
+            fig_ref_bar.update_traces(textposition="outside")
+            fig_ref_bar.update_layout(
+                yaxis=dict(autorange="reversed"),
+                coloraxis_showscale=False,
+            )
+            st.plotly_chart(fig_ref_bar, use_container_width=True)
+
+        with col_r:
+            fig_ref_pie = px.pie(
+                display_dist,
+                names=t("col_source"),
+                values=t("col_source_count"),
+                hole=0.4,
+                color_discrete_sequence=px.colors.sequential.Purples_r,
+            )
+            fig_ref_pie.update_traces(textposition="outside", textinfo="percent+label")
+            st.plotly_chart(fig_ref_pie, use_container_width=True)
+
+        if len(by_event_df.columns) > 1:
+            st.subheader(t("ref_event_title"))
+            fig_ref_event = px.bar(
+                by_event_df.reset_index(),
+                x="유입 경로",
+                y=by_event_df.columns.tolist(),
+                barmode="group",
+                title=t("ref_event_title"),
+                labels={"value": t("col_source_count"), "variable": t("col_event")},
+            )
+            st.plotly_chart(fig_ref_event, use_container_width=True)

@@ -143,3 +143,17 @@ def unpaid_members(pay_df: pd.DataFrame) -> pd.DataFrame:
     unpaid = pay_df[pay_df["paid"] == False][["event", "name"]].copy()
     unpaid.columns = ["이벤트", "이름"]
     return unpaid.reset_index(drop=True)
+
+
+def referral_distribution(ref_df: pd.DataFrame) -> pd.DataFrame:
+    """유입 경로별 전체 분포."""
+    dist = ref_df["source"].value_counts().reset_index()
+    dist.columns = ["유입 경로", "인원"]
+    return dist
+
+
+def referral_by_event(ref_df: pd.DataFrame) -> pd.DataFrame:
+    """이벤트 × 유입 경로 크로스탭."""
+    ct = pd.crosstab(ref_df["source"], ref_df["event"])
+    ct.index.name = "유입 경로"
+    return ct
