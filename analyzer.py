@@ -145,6 +145,26 @@ def unpaid_members(pay_df: pd.DataFrame) -> pd.DataFrame:
     return unpaid.reset_index(drop=True)
 
 
+def cash_checkin_summary(pay_df: pd.DataFrame) -> pd.DataFrame:
+    """현금 결제자 중 체크인 현황 (이벤트별)."""
+    if "checked_in" not in pay_df.columns:
+        return pd.DataFrame()
+    cash_df = pay_df[pay_df["method"] == "현금"]
+    if cash_df.empty:
+        return pd.DataFrame()
+    results = []
+    for event, grp in cash_df.groupby("event"):
+        total = len(grp)
+        checked = int(grp["checked_in"].sum())
+        results.append({
+            "이벤트": event,
+            "현금결제자": total,
+            "체크인": checked,
+            "미체크인": total - checked,
+        })
+    return pd.DataFrame(results)
+
+
 def referral_distribution(ref_df: pd.DataFrame) -> pd.DataFrame:
     """유입 경로별 전체 분포."""
     dist = ref_df["source"].value_counts().reset_index()

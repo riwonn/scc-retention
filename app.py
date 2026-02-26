@@ -15,6 +15,7 @@ from analyzer import (
     payment_summary,
     payment_method_dist,
     unpaid_members,
+    cash_checkin_summary,
     referral_distribution,
     referral_by_event,
 )
@@ -152,6 +153,11 @@ TRANSLATIONS = {
         "pay_method_other": "기타",
         "pay_unpaid_title": "미결제 멤버 목록",
         "pay_unpaid_empty": "미결제 멤버가 없습니다.",
+        "pay_cash_title": "현금 결제자 체크인 현황",
+        "pay_cash_empty": "현금 결제자가 없습니다.",
+        "col_cash_total": "현금결제자",
+        "col_checked_in": "체크인",
+        "col_not_checked": "미체크인",
         "col_paid": "결제완료",
         "col_unpaid": "미결제",
         "col_pay_rate": "결제율(%)",
@@ -240,6 +246,11 @@ TRANSLATIONS = {
         "pay_method_other": "Other",
         "pay_unpaid_title": "Unpaid Members",
         "pay_unpaid_empty": "No unpaid members.",
+        "pay_cash_title": "Cash Payers Check-in Status",
+        "pay_cash_empty": "No cash payers.",
+        "col_cash_total": "Cash Payers",
+        "col_checked_in": "Checked In",
+        "col_not_checked": "Not Checked In",
         "col_paid": "Paid",
         "col_unpaid": "Unpaid",
         "col_pay_rate": "Payment Rate (%)",
@@ -656,16 +667,19 @@ with tab5:
 
         st.divider()
 
-        # 미결제 멤버 목록
-        st.subheader(t("pay_unpaid_title"))
-        if unpaid.empty:
-            st.success(t("pay_unpaid_empty"))
+        # 현금 결제자 체크인 현황
+        st.subheader(t("pay_cash_title"))
+        cash_checkin = cash_checkin_summary(filtered_pay)
+        if cash_checkin.empty:
+            st.info(t("pay_cash_empty"))
         else:
-            display_unpaid = unpaid.rename(columns={
+            display_cash = cash_checkin.rename(columns={
                 "이벤트": t("col_event"),
-                "이름": t("col_name"),
+                "현금결제자": t("col_cash_total"),
+                "체크인": t("col_checked_in"),
+                "미체크인": t("col_not_checked"),
             })
-            st.dataframe(display_unpaid, use_container_width=True, hide_index=True)
+            st.dataframe(display_cash, use_container_width=True, hide_index=True)
 
 
 # ── Tab 6: 유입 경로 ──────────────────────────────────────────────────────────

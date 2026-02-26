@@ -109,9 +109,9 @@ def load_all_events(spreadsheet_id: str) -> dict[str, pd.DataFrame]:
         if len(values) < 2:
             continue
         headers, *rows = values
-        # 행 길이가 헤더보다 짧은 경우 빈 문자열로 패딩
+        # 행 길이를 헤더에 맞춤 (짧으면 패딩, 길면 자름)
         n = len(headers)
-        rows = [r + [""] * (n - len(r)) for r in rows]
+        rows = [(r + [""] * (n - len(r)))[:n] for r in rows]
         df = pd.DataFrame(rows, columns=headers)
         # 빈 문자열 → NaN
         df.replace("", pd.NA, inplace=True)
@@ -138,7 +138,7 @@ def build_attendance_matrix(
             continue
 
         name_col = find_column(df, NAME_KEYWORDS)
-        has_checkin = CHECKEDIN_COL in df.columns
+        has_checkin = CHECKEDIN_COL in df.columns and df[CHECKEDIN_COL].notna().any()
 
         # Filter to rows with valid emails
         email_series = df[email_col].dropna()
@@ -237,9 +237,6 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
         payment_series = df.loc[email_series.index, payment_col]
         payment_str = payment_series.astype(str).str.strip()
 
-        # 비어있지 않으면 결제 완료 (계좌이체든 현금이든 모두 paid)
-        paid_series = payment_series.notna() & (payment_str != "") & (payment_str != "nan")
-
         def _classify(x: str) -> str:
             xl = x.lower()
             if "입금" in x:
@@ -250,7 +247,17 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
                 return "기타"
             return ""
 
-        method_series = payment_str.apply(_classify).where(paid_series)
+        has_payment = payment_series.notna() & (payment_str != "") & (payment_str != "nan")
+        method_series = payment_str.apply(_classify).where(has_payment)
+
+        # 현금은 미결제로 처리
+        paid_series = has_payment & (method_series != "현금")
+
+        # 체크인 여부
+        if CHECKEDIN_COL in df.columns:
+            checkin_series = df.loc[email_series.index, CHECKEDIN_COL].notna()
+        else:
+            checkin_series = pd.Series(False, index=email_series.index)
 
         all_dfs.append(
             pd.DataFrame(
@@ -259,6 +266,7 @@ def build_payment_data(events: dict[str, pd.DataFrame]) -> pd.DataFrame:
                     "event": event_name,
                     "paid": paid_series.values,
                     "method": method_series.values,
+                    "checked_in": checkin_series.values,
                 }
             )
         )
