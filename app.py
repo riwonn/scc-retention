@@ -267,8 +267,13 @@ def t(key: str, **kwargs) -> str:
     return text.format(**kwargs) if kwargs else text
 
 
+# Resolve language from the keyed radio widget's saved state.
+# Streamlit writes keyed widget values to session_state before the script
+# runs, so this is available here — before set_page_config and st.title.
+st.session_state.lang = "en" if st.session_state.get("lang_radio") == "English" else "ko"
+
 st.set_page_config(
-    page_title="♟️ Retention Dashboard",
+    page_title=t("page_title"),
     page_icon="♟️",
     layout="wide",
 )
@@ -333,8 +338,7 @@ if matrix.empty:
 all_events = list(matrix.columns)
 with st.sidebar:
     with st.expander("⚙️ Settings", expanded=False):
-        lang_choice = st.radio(t("language"), ["한국어", "English"], horizontal=True)
-        st.session_state.lang = "ko" if lang_choice == "한국어" else "en"
+        st.radio(t("language"), ["한국어", "English"], horizontal=True, key="lang_radio")
 
         theme_opts = [t("theme_system"), t("theme_light"), t("theme_dark")]
         theme_choice = st.radio(t("theme"), theme_opts, horizontal=True)
